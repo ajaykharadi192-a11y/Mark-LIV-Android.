@@ -58,6 +58,7 @@ jobs:
       - name: Fix Android API level
         run: |
           cd "$PROJECT_DIR"
+          sed -i 's/requests,pyjnius/requests,pyjnius,charset-normalizer==3.4.3/' buildozer.spec
 
           if grep -q "^android.minapi" buildozer.spec; then
             sed -i 's/^android.minapi.*/android.minapi = 24/' buildozer.spec
