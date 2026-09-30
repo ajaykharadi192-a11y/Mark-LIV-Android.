@@ -1,0 +1,60 @@
+name: Build MARK LIV APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Download project
+        uses: actions/checkout@v4
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git zip unzip openjdk-17-jdk \
+            python3-pip python3-venv \
+            autoconf automake libtool pkg-config \
+            zlib1g-dev libncurses5-dev libncursesw5-dev \
+            cmake libffi-dev libssl-dev
+
+      - name: Extract Android project
+        run: |
+          mkdir project
+          unzip -q Mark-LIV-Android-Port.zip -d project
+          echo "Extracted files:"
+          find project -maxdepth 3 -name "buildozer.spec" -print
+
+      - name: Find project
+        run: |
+          SPEC=$(find project -name buildozer.spec -print -quit)
+          if [ -z "$SPEC" ]; then
+            echo "buildozer.spec not found"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$(dirname "$SPEC")" >> "$GITHUB_ENV"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Buildozer
+        run: |
+          python -m pip install --upgrade pip
+          pip install buildozer cython==0.29.37
+
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR"
+          buildozer android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MARK-LIV-APK
+          path: |
+            ${{ env.PROJECT_DIR }}/bin/*.apk
