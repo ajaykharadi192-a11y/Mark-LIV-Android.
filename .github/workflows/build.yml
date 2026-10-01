@@ -27,7 +27,7 @@ jobs:
       - name: Unpack and build APK
         shell: bash
         run: |
-          ZIP_FILE="$(find . -maxdepth 1 -type f -name 'JARVIS-50-commands-*.zip' -print -quit)"
+          ZIP_FILE="$(find . -maxdepth 1 -type f -name 'JARVIS-ALL-SYSTEMS-50-COMMANDS-GEMINI-FIX.zip' -print -quit)"
           if [ -z "$ZIP_FILE" ]; then
             echo "Project ZIP not found"
             exit 1
