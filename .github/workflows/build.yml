@@ -1,4 +1,5 @@
-name: Build MARK LIV APK
+
+name: Build MARK APK
 
 on:
   push:
@@ -6,76 +7,49 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Download project
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install system packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            git zip unzip openjdk-17-jdk \
-            python3-pip python3-venv \
-            autoconf automake libtool pkg-config \
-            zlib1g-dev libncurses5-dev libncursesw5-dev \
-            libtinfo5 cmake libffi-dev libssl-dev
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-      - name: Extract Android project
+      - name: Unpack and build APK
+        shell: bash
         run: |
-          mkdir -p project
-          unzip -q Mark-LIV-Android-Port.zip -d project
-          echo "Extracted files:"
-          find project -maxdepth 3 -name "buildozer.spec" -o -name "*.py"
-
-      - name: Find project
-        run: |
-          SPEC=$(find project -name buildozer.spec -print -quit)
-
-          if [ -z "$SPEC" ]; then
-            echo "buildozer.spec not found"
+          ZIP_FILE="$(find . -maxdepth 1 -type f -name 'JARVIS-50-commands-*.zip' -print -quit)"
+          if [ -z "$ZIP_FILE" ]; then
+            echo "Project ZIP not found"
             exit 1
           fi
 
-          PROJECT_DIR=$(dirname "$SPEC")
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          mkdir -p source
+          unzip -q "$ZIP_FILE" -d source
 
-          echo "Project directory: $PROJECT_DIR"
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install Buildozer
-        run: |
-          python -m pip install --upgrade pip
-          pip install buildozer cython==0.29.37
-
-      - name: Fix Android API level
-        run: |
-          cd "$PROJECT_DIR"
-
-          if grep -q "^android.minapi" buildozer.spec; then
-            sed -i 's/^android.minapi.*/android.minapi = 24/' buildozer.spec
-          else
-            echo "android.minapi = 24" >> buildozer.spec
+          WRAPPER="$(find source -type f -name gradlew -print -quit)"
+          if [ -z "$WRAPPER" ]; then
+            echo "Gradle wrapper not found"
+            exit 1
           fi
 
-          echo "Android min API:"
-          grep "^android.minapi" buildozer.spec || true
-
-      - name: Build APK
-        run: |
+          PROJECT_DIR="$(dirname "$WRAPPER")"
+          chmod +x "$WRAPPER"
           cd "$PROJECT_DIR"
-          buildozer android debug
+          ./gradlew --no-daemon assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MARK-LIV-APK
-          path: |
-            ${{ env.PROJECT_DIR }}/bin/*.apk
+          name: MARK-JARVIS-debug-APK
+          path: source/**/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
